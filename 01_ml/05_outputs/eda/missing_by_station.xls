@@ -1,0 +1,15 @@
+station_name,avg_temp,min_temp,max_temp,humidity,relative_humidity_pct,dew_point_c,absolute_humidity_g_m3,wind_speed,air_pressure,rainfall
+Ambala,0,1,0,0,0,0,0,11,11,6
+Bikaner,0,0,0,0,0,0,0,0,0,0
+Car Nicobar,0,0,0,0,0,0,0,0,0,0
+Chandigarh / S?rajpur,0,1,0,0,0,0,0,9,9,1
+Cochin Int. Airport / K?ladi,0,0,0,0,0,0,0,0,0,2
+Coimbatore / Peelamedu,0,0,0,0,0,0,0,2,6,5
+Ludhiana,0,0,0,0,0,0,0,4,4,1
+Mandi,0,0,0,0,0,0,0,0,0,0
+Palakkad,0,0,0,0,0,0,0,0,0,0
+Patiala,0,1,0,0,0,0,0,11,11,6
+Shimla / Kanda,0,0,0,0,0,0,0,0,0,0
+Sundernagar / Sundarnagar,0,0,0,0,0,0,0,0,0,0
+Thrissur,0,0,0,0,0,0,0,0,0,0
+Una,0,0,0,0,0,0,0,0,0,0

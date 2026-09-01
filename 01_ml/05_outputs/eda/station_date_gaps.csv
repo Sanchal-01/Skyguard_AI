@@ -1,0 +1,15 @@
+station_name,expected_days,actual_rows,missing_days
+Ambala,1502,1500,2
+Bikaner,1501,1489,12
+Car Nicobar,1501,1487,14
+Chandigarh / S?rajpur,1502,1498,4
+Cochin Int. Airport / K?ladi,1502,1491,11
+Coimbatore / Peelamedu,1502,1498,4
+Ludhiana,1502,1495,7
+Mandi,1501,1489,12
+Palakkad,1501,1488,13
+Patiala,1502,1500,2
+Shimla / Kanda,1500,1488,12
+Sundernagar / Sundarnagar,1501,1489,12
+Thrissur,1501,1487,14
+Una,1501,1489,12
