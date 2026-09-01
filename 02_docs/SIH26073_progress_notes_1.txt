@@ -1,0 +1,331 @@
+SIH26073 — PROJECT NOTES / PROGRESS SO FAR                                                                    # 30/08/26
+
+PROJECT
+-------
+Problem Statement: SIH26073
+Theme: AI/ML-Based Intelligent Anomaly Detection for Automatic Weather Stations (AWS)
+Team size: 6 members
+
+GOAL OF THE PROJECT
+-------------------
+We are building an intelligent software layer for Automatic Weather Stations (AWS).
+
+Basic idea:
+
+    AWS Sensors
+        ↓
+    Incoming Weather Data
+        ↓
+    Our Anomaly Detection System
+        ↓
+    Normal / Fault / Transmission Issue / Genuine Extreme Event
+        ↓
+    Clean + Quality-Tagged Data
+        ↓
+    Forecasting / Monitoring Systems
+
+The important challenge is NOT just finding unusual values.
+
+We must distinguish:
+1. Sensor fault
+2. Transmission / communication problem
+3. Genuine extreme weather event
+
+Example:
+- One station suddenly reports 45°C while nearby stations stay normal → likely sensor fault.
+- Several nearby stations suddenly change together → could be a genuine regional weather event.
+- Missing / duplicate / broken / delayed records → transmission problem.
+
+
+PHASE 1 — RAW DATA RECEIVED
+---------------------------
+We started with the raw AWS dataset:
+
+File:
+    aws_stations_subset.csv
+
+Dataset size:
+    20,888 rows
+    14 columns
+    14 stations
+
+Original columns:
+    cluster
+    station_name
+    state
+    district
+    date_of_record
+    avg_temp
+    min_temp
+    max_temp
+    wind_speed
+    air_pressure
+    rainfall
+    elevation
+    latitude
+    longitude
+
+Date range:
+    2021-01-01 to 2025-02-10
+
+Important observation:
+This dataset is DAILY data, not 5-minute / 15-minute / hourly telemetry.
+
+Therefore:
+- We should not pretend the historical dataset itself is real-time telemetry.
+- Later, the application can replay the historical data like a live stream for demonstration.
+
+
+PHASE 2 — WHY WE ADDED HUMIDITY
+--------------------------------
+The PS specifically talks about humidity, so we decided to add humidity-related information synthetically.
+
+We created a new clean dataset:
+
+    aws_stations_with_synthetic_humidity.csv
+
+New columns added:
+    humidity
+    relative_humidity_pct
+    dew_point_c
+    absolute_humidity_g_m3
+
+Important:
+- humidity and relative_humidity_pct represent the same RH information.
+- We will NOT use both as separate ML features later because that would duplicate the same information.
+- dew_point_c was added so we can use a useful meteorological relationship/rule.
+- The synthetic values were added BEFORE anomaly injection.
+
+This file is our CLEAN BASELINE DATASET.
+
+We are keeping the clean baseline separate so that:
+    clean data
+        ↓
+    anomaly injection
+        ↓
+    labeled test data
+
+The original clean data must remain untouched.
+
+
+PHASE 3 — CLEAN DATASET CHECK
+-----------------------------
+The humidity-enhanced dataset contains:
+
+    20,888 rows
+    18 columns
+    14 stations
+
+Columns now include:
+
+    cluster
+    station_name
+    state
+    district
+    date_of_record
+    avg_temp
+    min_temp
+    max_temp
+    humidity
+    relative_humidity_pct
+    dew_point_c
+    absolute_humidity_g_m3
+    wind_speed
+    air_pressure
+    rainfall
+    elevation
+    latitude
+    longitude
+
+Checks:
+- Duplicate station-date records: 0
+- Missing synthetic humidity: 0
+- Missing synthetic RH: 0
+- dew_point_c > avg_temp violations: 0
+
+Original missing values still present:
+- min_temp: 3
+- wind_speed: 37
+- air_pressure: 41
+- rainfall: 21
+
+These missing values are NOT automatically called sensor anomalies.
+They can later be useful for transmission/missing-data scenarios.
+
+
+PHASE 4 — EDA PERFORMED
+-----------------------
+We performed EDA on the clean humidity-enhanced dataset BEFORE injecting any deliberate anomalies.
+
+1. TEMPORAL BEHAVIOUR
+---------------------
+Lag-1 autocorrelation (average across stations):
+
+    avg_temp       ≈ 0.951
+    humidity       ≈ 0.919
+    dew_point_c    ≈ 0.939
+    air_pressure   ≈ 0.948
+    wind_speed     ≈ 0.740
+    rainfall       ≈ 0.371
+
+Meaning:
+- Temperature, humidity, dew point and pressure are strongly dependent on nearby previous-day values.
+- This is useful for temporal anomaly detection.
+- A sudden spike, stuck value or gradual drift should differ from normal temporal behaviour.
+- Rainfall is more irregular/intermittent.
+
+
+2. STATION-SPECIFIC DIFFERENCES
+-------------------------------
+Average humidity varies a lot between stations.
+
+Examples:
+    Thrissur       ≈ 82.8%
+    Palakkad       ≈ 81.2%
+    Cochin         ≈ 79.1%
+    Shimla         ≈ 78.2%
+    Ambala         ≈ 62.0%
+    Bikaner        ≈ 63.0%
+    Car Nicobar    ≈ 61.3%
+
+Conclusion:
+Do NOT use one global threshold such as:
+    "humidity > 80% = anomaly"
+
+Every station has its own normal behaviour.
+
+
+3. IMPORTANT FEATURE CORRELATIONS
+---------------------------------
+Correlation matrix showed approximately:
+
+    avg_temp ↔ humidity       = -0.518
+    avg_temp ↔ dew_point_c    =  0.923
+    avg_temp ↔ air_pressure   = -0.780
+
+These relationships are useful because weather variables are not independent.
+
+Humidity is therefore not just an arbitrary extra column; it gives us another signal for anomaly detection.
+
+
+4. SPATIAL STRUCTURE
+--------------------
+The 14 stations form useful geographic groups.
+
+Punjab Plains:
+    Ambala
+    Chandigarh / S?rajpur
+    Ludhiana
+    Patiala
+
+Himachal Hills:
+    Mandi
+    Shimla / Kanda
+    Sundernagar / Sundarnagar
+    Una
+
+Kerala-TN Western Ghats:
+    Palakkad
+    Thrissur
+    Cochin Int. Airport / K?ladi
+    Coimbatore / Peelamedu
+
+More isolated:
+    Bikaner
+    Car Nicobar
+
+This is very useful for the spatial anomaly detector because we can compare a station with geographically nearby stations.
+
+
+5. KEY PROJECT INSIGHT FROM EDA
+--------------------------------
+The EDA confirms that a useful detector should be:
+
+    STATION-AWARE
+        +
+    TIME-AWARE
+        +
+    SPATIALLY-AWARE
+        +
+    PHYSICS / DOMAIN-AWARE
+
+A simple global outlier detector will not be enough.
+
+Example logic:
+
+    One station changes abnormally
+    + neighbours remain normal
+    → possible sensor fault
+
+    Many nearby stations change together
+    → possible genuine weather event
+
+    Timestamp/data sequence breaks
+    → possible transmission glitch
+
+
+CURRENT PROJECT STATE
+---------------------
+We have completed:
+
+    [DONE] Raw AWS dataset received
+    [DONE] Clean baseline dataset created
+    [DONE] Synthetic humidity / RH added
+    [DONE] Dew point + absolute humidity added
+    [DONE] Data quality checks
+    [DONE] EDA
+    [DONE] Python environment setup
+    [DONE] TensorFlow 2.21.0 on Python 3.11.9
+    [DONE] Core data/ML libraries installed
+    [DONE] GeoPandas / Shapely / PyProj installed
+
+Python environment:
+    Environment name: .AWSEnv
+    Python: 3.11.9
+    TensorFlow: 2.21.0
+
+
+NEXT STEP
+---------
+DO NOT inject anomalies into the clean file directly.
+
+Next we will design an anomaly-injection framework and create
+a separate labeled dataset.
+
+Planned categories:
+
+1. SENSOR FAULT
+   - stuck-at value
+   - sudden spike/drop
+   - gradual drift
+
+2. TRANSMISSION GLITCH
+   - missing reading
+   - duplicate reading
+   - delayed/out-of-order data
+   - corrupted / null field
+
+3. GENUINE EXTREME EVENT
+   - regional temperature event
+   - regional rainfall event
+   - regional humidity-related event
+
+Each injected case should have ground-truth information such as:
+
+    station
+    date/time
+    affected sensor
+    anomaly category
+    anomaly subtype
+    severity
+    original value
+    modified value
+    injection start/end
+    true label
+
+VERY IMPORTANT:
+The purpose of the anomaly injection is to create controlled ground truth so that later we can objectively evaluate precision, recall, 
+F1-score, false positives, and especially whether genuine extreme events are mistakenly classified as sensor faults.
+
+END OF CURRENT NOTES
+--------------------
