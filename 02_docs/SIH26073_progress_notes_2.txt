@@ -1,0 +1,554 @@
+SIH26073 — NOTES 2                                                                                                                                  # 01/09/26
+====================
+
+PROJECT
+-------
+Problem Statement: SIH26073
+Project: Skyguard AI
+Focus: AI/ML-based anomaly detection for Automatic Weather Stations (AWS).
+
+TODAY'S MAIN GOAL
+------------------
+Set up the AI/ML workspace properly, organize all data/EDA files,review the EDA notebook, and 
+prepare the project for the next phase:controlled anomaly injection.
+
+
+1. FINAL AI/ML REPO STRUCTURE
+-----------------------------
+We decided to keep AI/ML separate from the existing React frontend.
+
+Skyguard_AI/
+│
+├── src/                         # React / Web frontend
+│
+├── 01_ml/                       # AI / ML workspace
+│   │
+│   ├── 01_data/
+│   │   ├── 01_raw/
+│   │   ├── 02_processed/
+│   │   └── 03_synthetic/
+│   │
+│   ├── 02_notebooks/
+│   │
+│   ├── 03_src/
+│   │   ├── 01_data/
+│   │   ├── 02_anomaly/
+│   │   ├── 03_temporal/
+│   │   ├── 04_spatial/
+│   │   ├── 05_physics/
+│   │   └── 06_fusion/
+│   │
+│   ├── 04_models/
+│   ├── 05_outputs/
+│   ├── 06_tests/
+│   └── 07_scripts/
+│
+├── 02_docs/
+│
+├── AWS_venv/
+└── existing web/project files
+
+The numbering is intentional so the project is easy to navigate and explain.
+
+
+2. PYTHON / ML ENVIRONMENT
+--------------------------
+Environment:
+    .AWSEnv
+
+Confirmed:
+    Python      = 3.11.9
+    TensorFlow  = 2.21.0
+
+Installed core libraries:
+    NumPy
+    Pandas
+    SciPy
+    Matplotlib
+    Seaborn
+    Scikit-learn
+    JupyterLab
+    IPykernel
+    tqdm
+    joblib
+    PyYAML
+
+Installed spatial libraries:
+    GeoPandas
+    Shapely
+    PyProj
+
+The environment health check was completed successfully.
+
+Important:
+We decided to use TensorFlow because it is already familiar from previous CNN work.
+
+
+3. BACKEND DECISION FOR THE FUTURE
+----------------------------------
+Chosen stack:
+
+    FastAPI   ?????
+    MQTT + Mosquitto
+    TimescaleDB
+    TensorFlow
+
+Not using initially:
+
+    Apache Kafka
+    InfluxDB
+
+Reasoning:
+- FastAPI → API layer and model serving.    *?????*
+- MQTT → natural fit for AWS/sensor-style messaging.
+- Mosquitto → lightweight local MQTT broker.
+- TimescaleDB → time-series data plus PostgreSQL capabilities.
+- Kafka → kept as a future production-scale option.
+- InfluxDB → valid option, but TimescaleDB fits our combined data/application needs better.
+
+We will NOT install/use the backend infrastructure prematurely.
+ML development comes first, integration later.
+
+
+4. DATASET ORGANIZATION
+------------------------
+Original raw dataset:
+
+    01_ml/01_data/01_raw/aws_stations_subset.csv
+
+Rule:
+    Keep the original dataset untouched.
+
+Humidity-enhanced clean dataset:
+
+    01_ml/01_data/02_processed/
+        aws_stations_with_synthetic_humidity.csv
+
+This is the current clean working dataset.
+
+Future anomaly dataset:
+
+    01_ml/01_data/03_synthetic/
+
+Example future file:
+    test_dataset.csv
+
+
+
+
+6. NOTEBOOK ORGANIZATION
+------------------------
+Notebook folder:
+
+    01_ml/02_notebooks/
+
+Current notebook:
+
+    01_data_loading_validation.ipynb
+
+The larger EDA notebook is also kept in:
+
+    01_ml/02_notebooks/
+
+Future notebook plan:
+
+    01_data_loading_validation.ipynb
+    02_eda.ipynb
+    03_anomaly_injection.ipynb
+    04_temporal_model.ipynb
+    05_spatial_model.ipynb
+    06_evaluation.ipynb
+
+General rule:
+    .py  = reusable implementation
+    .ipynb = experimentation / analysis / evidence
+
+We will not fake notebook execution. Important analysis should genuinely run.
+
+
+7. LOADER MODULE
+----------------
+Created:
+
+    01_ml/03_src/01_data/loader.py
+
+Main responsibilities:
+    - Load the AWS CSV
+    - Check expected columns
+    - Convert date_of_record to datetime
+    - Sort by station and date
+    - Perform basic data quality checks
+
+Functions:
+
+    load_weather_data(file_path)
+    check_data(df)
+
+The notebook initially had an import issue because our folders are numbered.
+We fixed the path and successfully imported the loader.
+
+Important:
+loader.py is a reusable module. It does not need to be manually executed like a script.
+
+
+8. HUMIDITY / RH ADDITION
+-------------------------
+Because the problem statement specifically mentions humidity, synthetic
+humidity-related features were added before anomaly injection.
+
+Added columns:
+
+    humidity
+    relative_humidity_pct
+    dew_point_c
+    absolute_humidity_g_m3
+
+Important:
+    humidity and relative_humidity_pct contain the same RH information.
+
+Therefore:
+    We should not feed both as separate ML features later.
+
+The humidity-enhanced file is still CLEAN.
+No deliberate anomalies have been injected yet.
+
+
+9. CURRENT CLEAN DATASET
+------------------------
+Rows:
+    20,888
+
+Columns:
+    18
+
+Stations:
+    14
+
+Date range:
+    2021-01-01 → 2025-02-10
+
+Synthetic humidity / RH:
+    no missing values
+
+Duplicate station-date pairs:
+    0
+
+Original missing values:
+    min_temp      = 3
+    wind_speed    = 37
+    air_pressure  = 41
+    rainfall      = 21
+
+Important:
+These existing missing values are not automatically considered confirmed sensor faults.
+They may later be useful for testing transmission/missing-data scenarios.
+
+
+10. EDA COMPLETED by Megha (01/09/26)
+-----------------
+The EDA notebook was reviewed in detail.
+
+Sections covered:
+    - Base libraries
+    - Data loading
+    - Shape and data types
+    - Date conversion
+    - Station/cluster structure
+    - Missing values
+    - Station-wise missingness
+    - Structural date gaps
+    - Descriptive statistics
+    - Cross-variable / physical consistency checks
+    - IQR outlier detection
+    - Station-month baselines
+    - Visualizations
+
+
+11. IMPORTANT EDA RESULTS
+-------------------------
+
+A. Strong temporal dependence
+
+Approximate lag-1 autocorrelation:
+
+    avg_temp      ≈ 0.951
+    humidity      ≈ 0.919
+    dew_point_c   ≈ 0.939
+    air_pressure  ≈ 0.948
+    wind_speed    ≈ 0.740
+    rainfall      ≈ 0.371
+
+Meaning:
+Temperature, humidity, dew point and pressure are strongly dependent on
+recent observations.
+
+This supports temporal anomaly detection.
+
+
+B. Strong station-specific differences
+
+Average RH varies significantly between stations.
+
+Examples:
+    Thrissur       ≈ 82.8%
+    Palakkad       ≈ 81.2%
+    Cochin         ≈ 79.1%
+    Shimla         ≈ 78.2%
+    Ambala         ≈ 62%
+
+Conclusion:
+Do not use one global threshold such as:
+    "RH > 80% = anomaly"
+
+We need station/season-aware behaviour.
+
+
+C. Useful cross-variable relationships
+
+Approximate correlations:
+
+    avg_temp ↔ humidity       ≈ -0.518
+    avg_temp ↔ dew_point_c    ≈ +0.923
+    avg_temp ↔ air_pressure   ≈ -0.780
+
+These relationships can be useful in multivariate anomaly detection.
+
+
+D. Structural date gaps
+
+Observed whole-row gaps include:
+
+    Ambala       = 2 missing days
+    Bikaner      = 12
+    Car Nicobar  = 14
+    Thrissur     = 14
+
+Important:
+A missing observation is an observed data gap.
+It should not automatically be called a transmission fault because the actual
+cause is unknown.
+
+
+E. Physical consistency checks
+
+Checks performed:
+
+    min_temp <= avg_temp <= max_temp
+    0 <= RH <= 100
+    rainfall >= 0
+    wind_speed >= 0
+    humidity ≈ relative_humidity_pct
+
+Results:
+
+    temperature-order violations = 2
+    humidity mismatch             = 0
+    RH out of range               = 0
+    negative rainfall             = 0
+    negative wind                 = 0
+
+Do not automatically delete the 2 temperature-order violations.
+They are useful examples for the quality-control system.
+
+
+F. IQR OUTLIERS
+
+Using cluster + month IQR grouping:
+
+    avg_temp outliers              = 146
+    relative humidity outliers     = 107
+    air_pressure outliers          = 188
+
+Important:
+    IQR outlier != sensor fault
+
+A genuine extreme weather event can be statistically unusual.
+
+Therefore:
+These flags are EDA diagnostics, NOT ground-truth anomaly labels.
+
+
+G. STATION-MONTH BASELINES
+
+We generated station + month mean/std baselines for:
+
+    avg_temp
+    min_temp
+    max_temp
+    relative_humidity_pct
+    air_pressure
+
+This gives us a better station-aware seasonal reference.
+
+Example:
+Normal temperature for Bikaner should not be judged using the same baseline
+as Shimla.
+
+
+
+14. ANOMALY INJECTION PLAN
+--------------------------
+We have NOT injected anomalies yet.
+
+Next phase will use the clean baseline and create a separate ground-truth dataset.
+
+Main categories:
+
+1. SENSOR FAULT
+   - stuck-at value
+   - sudden spike/drop
+   - gradual drift
+   - bias shift
+   - cross-sensor inconsistency
+   - physically impossible readings
+
+2. TRANSMISSION / COMMUNICATION GLITCH
+   - missing record
+   - duplicate record
+   - delayed / out-of-order record
+   - corrupted value
+   - null / malformed field
+
+3. GENUINE EXTREME WEATHER EVENT
+   - regional temperature event
+   - regional rainfall event
+   - regional humidity-related event
+
+Core distinction:
+
+    One station changes abnormally
+    + nearby stations stay normal
+    → likely sensor fault
+
+    Several nearby stations change together
+    → likely genuine regional weather event
+
+    Data sequence / communication breaks
+    → likely transmission glitch
+
+
+15. MODELING APPROACH WE AGREED ON
+----------------------------------
+We will not jump directly to a deep model.
+
+Planned progression:
+
+    Temporal baseline
+          +
+    Spatial consistency
+          +
+    Physics/domain rules
+          ↓
+    Fusion / classification
+          ↓
+    Advanced model only if it provides real improvement
+
+Possible temporal model later:
+    LSTM Autoencoder
+
+Possible statistical baselines:
+    rolling statistics
+    seasonal baseline
+    z-score / similar methods
+
+Spatial layer:
+    nearest-neighbour / distance-weighted comparison
+    using latitude + longitude
+    possibly elevation-aware later
+
+Physics layer:
+    RH limits
+    dew point relationship
+    rainfall constraints
+    wind constraints
+    temperature ordering
+    other justified domain rules
+
+
+16. CURRENT STATUS
+------------------
+[DONE] ML repository folder structure
+[DONE] Python environment
+[DONE] TensorFlow 2.21.0
+[DONE] Core ML/data libraries
+[DONE] Spatial libraries
+[DONE] Raw dataset organized
+[DONE] Humidity-enhanced clean dataset
+[DONE] loader.py
+[DONE] Notebook path/import issue fixed
+[DONE] Data loading/validation work
+[DONE] EDA performed
+[DONE] EDA output files
+[DONE] Missing-value report
+[DONE] Structural-gap report
+[DONE] Station-month baselines
+[DONE] EDA visualizations
+[DONE] Git commit messages prepared
+
+
+17. IMMEDIATE NEXT STEP
+-----------------------
+Before injecting anomalies:
+
+    1. Clean/finalize the EDA notebook
+    2. Make all paths project-relative
+    3. Make the notebook use loader.py
+    4. Fix plot output paths
+    5. Fix incorrect Markdown/Code cells
+    6. Rerun the full notebook from top to bottom
+    7. Keep the clean dataset untouched
+    8. Freeze the clean baseline
+
+Then:
+
+    Phase 2 → controlled anomaly injection
+    Phase 3 → feature engineering
+    Phase 4 → temporal anomaly detection
+    Phase 5 → spatial anomaly detection
+    Phase 6 → physics rules
+    Phase 7 → fusion/classification
+    Phase 8 → evaluation
+    Phase 9 → MQTT + TimescaleDB + FastAPI
+    Phase 10 → React integration
+
+
+MOST IMPORTANT PROJECT RULE
+---------------------------
+Never overwrite the clean dataset with anomaly-injected data.
+
+Correct flow:
+
+    CLEAN BASELINE
+         ↓
+    COPY / CONTROLLED INJECTION
+         ↓
+    LABELED SYNTHETIC DATASET
+         ↓
+    MODEL TRAINING / TESTING
+         ↓
+    EVALUATION
+
+The synthetic dataset must preserve ground-truth information such as:
+
+    station
+    date/time
+    affected sensor
+    anomaly category
+    anomaly subtype
+    severity
+    original value
+    modified value
+    injection start/end
+    true label
+
+This will allow us to evaluate:
+
+    Precision
+    Recall
+    F1-score
+    False Positive Rate
+    Genuine-event-as-fault error rate
+
+
+END OF NOTES 2
+==============
