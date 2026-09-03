@@ -12,10 +12,7 @@ EXPECTED_COLUMNS = [
     "avg_temp",
     "min_temp",
     "max_temp",
-    "humidity",
-    "relative_humidity_pct",
-    "dew_point_c",
-    "absolute_humidity_g_m3",
+    "relative_humidity",
     "wind_speed",
     "air_pressure",
     "rainfall",
@@ -25,7 +22,7 @@ EXPECTED_COLUMNS = [
 ]
 
 
-def load_weather_data(file_path):
+def load_weather_data(file_path, sort_data=False):
     """Load the AWS CSV and do some basic checks."""
 
     file_path = Path(file_path)
@@ -55,10 +52,11 @@ def load_weather_data(file_path):
     if df["date_of_record"].isna().any():
         raise ValueError("Some dates could not be converted.")
 
-    # Keep each station's data in chronological order
-    df = df.sort_values(
-        ["station_name", "date_of_record"]
-    ).reset_index(drop=True)
+    # Sort only when explicitly requested. This is important because our anomaly dataset can contain delayed / out-of-order records.
+    if sort_data:
+        df = df.sort_values(
+            ["station_name", "date_of_record"]
+        ).reset_index(drop=True)
 
     return df
 
@@ -91,20 +89,29 @@ def check_data(df):
     )
 
     print(
-        "Missing humidity:",
-        df["humidity"].isna().sum()
-    )
-
-    print(
         "Missing relative humidity:",
-        df["relative_humidity_pct"].isna().sum()
+        df["relative_humidity"].isna().sum()
     )
 
     invalid_rh = (
-        (df["relative_humidity_pct"] < 0)
-        | (df["relative_humidity_pct"] > 100)
+        (df["relative_humidity"] < 0)
+        | (df["relative_humidity"] > 100)
     ).sum()
 
     print("Invalid RH values:", invalid_rh)
+
+    # These checks are only done when anomaly ground-truth
+    # columns are available in the dataset.
+    if "is_injected" in df.columns:
+        print(
+            "Injected rows:",
+            df["is_injected"].sum()
+        )
+
+    if "anomaly_category" in df.columns:
+        print(
+            "Anomaly categories:",
+            df["anomaly_category"].value_counts().to_dict()
+        )
 
     print("================================\n")
