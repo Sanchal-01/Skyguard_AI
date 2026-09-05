@@ -1,0 +1,17 @@
+{
+    "features": [
+        "avg_temp",
+        "min_temp",
+        "max_temp",
+        "relative_humidity",
+        "wind_speed",
+        "air_pressure",
+        "rainfall",
+        "elevation",
+        "latitude",
+        "longitude"
+    ],
+    "target": "anomaly_category",
+    "number_of_features": 10,
+    "number_of_classes": 4
+}

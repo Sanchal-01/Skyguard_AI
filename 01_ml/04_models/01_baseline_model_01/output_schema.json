@@ -1,0 +1,6 @@
+{
+    "prediction": "NORMAL",
+    "prediction_id": 1,
+    "confidence": 0.95,
+    "model": "baseline_mlp_soft_weights"
+}
