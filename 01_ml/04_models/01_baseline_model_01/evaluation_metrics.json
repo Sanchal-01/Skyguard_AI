@@ -1,0 +1,8 @@
+{
+    "model": "baseline_mlp_soft_weights",
+    "dataset": "validation",
+    "accuracy": 0.9447268106734434,
+    "macro_precision": 0.33594716124055685,
+    "macro_recall": 0.4468993019976975,
+    "macro_f1": 0.31196765311704944
+}
